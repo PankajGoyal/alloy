@@ -337,8 +337,7 @@ function parseAlloyComponent(view,dir,manifest,noView) {
 				'Ti.UI.Window',
 				'Ti.UI.iPad.SplitWindow',
 				'Ti.UI.TabGroup',
-				'Alloy.Collection'
-			];
+			].concat(CONST.MODEL_ELEMENTS);
 			_.each(rootChildren, function(node) {
 				var found = true;
 				var args = CU.getParserArgs(node, {}, { doSetId: false });
@@ -358,7 +357,7 @@ function parseAlloyComponent(view,dir,manifest,noView) {
 				if (!found) {
 					U.die([
 						'Compile failed. index.xml must have a top-level container element.',
-						'Valid elements: [ Window, TabGroup, SplitWindow]'
+						'Valid elements: [' + valid.join(',') + ']'
 					]);
 				}
 			});
@@ -368,16 +367,21 @@ function parseAlloyComponent(view,dir,manifest,noView) {
 		var assignedDefaultId = false;
 		_.each(rootChildren, function(node, i) {
 			var defaultId = undefined;
-			var isTopLevel = true;
-			if (!assignedDefaultId && CU.getNodeFullname(node) !== 'Alloy.Collection') {
+			var fullname = CU.getNodeFullname(node);
+			var isModelElement = _.contains(CONST.MODEL_ELEMENTS,fullname);
+
+			if (!assignedDefaultId && !isModelElement) {
 				assignedDefaultId = true;
 				defaultId = viewName;
-			} else if (CU.getNodeFullname(node) === 'Alloy.Collection') {
-				isTopLevel = false;
-			}
+			} 
 
-			//var defaultId = !assignedDefaultId ? viewName : undefined;
-			template.viewCode += CU.generateNode(node, state, defaultId, isTopLevel);
+			if (!isModelElement) {
+				template.viewCode += CU.generateNode(node, state, defaultId, true);
+			} else {
+				var vCode = CU.generateNode(node, state, defaultId, false, isModelElement);
+				template.viewCode += vCode.content;
+				template.preCode += vCode.pre;
+			}
 		});
 	}
 
